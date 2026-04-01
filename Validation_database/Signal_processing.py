@@ -6,9 +6,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
-from scipy.signal import butter, filtfilt, iirnotch
+from scipy.signal import butter, lfilter, iirnotch
 import os
 
+# Funcion de procesamiento de senal EMG 
+def emg_processing_pipeline(raw_signal, fs, low=20, high=450, notch_freq=60):
+    nyq = 0.5 * fs
+    
+    # Filtro Notch para eliminar ruido de 60 Hz
+    b_notch, a_notch = iirnotch(notch_freq / (0.5 * fs), 4)
+    sig_notch = lfilter(b_notch, a_notch, raw_signal)
+
+    # Filtrado de banda (20-450 Hz)
+    lowcut = low / nyq
+    highcut = high / nyq
+    b_band, a_band = butter(4, [lowcut, highcut], btype='band')
+    sig_filtered = lfilter(b_band, a_band, sig_notch)
+
+    # Envolvente RMS (ventana de 200 ms)
+    window_samples = int(0.2 * fs)
+    envelope = np.sqrt(np.convolve(sig_filtered**2, np.ones(window_samples)/window_samples, mode='same'))
+      
+    return sig_filtered, envelope
+
+# Cargar y procesar la senal EMG desde la base de datos
 base_path = os.path.dirname(__file__)                       
 file_path = os.path.join(base_path, "examples-of-electromyograms-1.0.0","emg_healthy.txt")
 
@@ -49,8 +70,53 @@ plt.plot(xf, magnitude, color='tab:red')
 plt.title("Espectro de Frecuencia (FFT)")
 plt.xlabel("Frecuencia (Hz)")
 plt.ylabel("Magnitud")
-plt.xlim(0, 500)  # El EMG útil llega hasta 500Hz
+plt.xlim(0, 500)  # El EMG util llega hasta 500Hz
 plt.grid(True)
 
 plt.tight_layout()
+plt.show()
+
+# Procesamiento de la senal EMG utilizando el pipeline definido
+sig_f, env = emg_processing_pipeline(signal_centered, fs)
+
+# Visualizacion de la senal procesada   
+plt.figure(figsize=(12, 8))
+
+# Grafica de la senal filtrada
+plt.subplot(3, 1, 1)
+plt.plot(time, signal_centered, color='lightgray', lw=0.5, label='Cruda')
+plt.plot(time, sig_f, color='tab:blue', lw=0.8, label='Filtrada (20-450Hz)')
+plt.title("Filtrado Digital")
+plt.xlabel("Tiempo (s)")
+plt.ylabel("Amplitud (mV)")
+plt.legend()
+
+# Grafica de la senal rectificada (valor absoluto)
+plt.subplot(3, 1, 2)
+plt.plot(time, np.abs(sig_f), color='orange', lw=0.5)
+plt.title("Senal Rectificada (Valor Absoluto)")
+plt.xlabel("Tiempo (s)")
+plt.ylabel("Amplitud (mV)")
+
+# Grafica de la envolvente RMS (ventana muscular)
+plt.subplot(3, 1, 3)
+plt.plot(time, env, color='red', lw=2)
+plt.fill_between(time, env, color='red', alpha=0.2)
+plt.title("Envolvente RMS (Ventana Muscular)")
+plt.xlabel("Tiempo (s)")
+plt.ylabel("Amplitud (mV)")
+
+plt.tight_layout()
+plt.show()
+
+# Validacion FFT de la senal filtrada 
+yf_f = fft(sig_f)
+mag_f = 2.0/n * np.abs(yf_f[0:n//2])
+
+plt.figure(figsize=(10, 4))
+plt.plot(xf, mag_f, color='purple')
+plt.title("Validacion: Espectro de la Senal Filtrada")
+plt.xlabel("Frecuencia (Hz)")
+plt.xlim(0, 500)
+plt.grid(True)
 plt.show()
