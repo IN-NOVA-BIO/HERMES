@@ -5,7 +5,9 @@
 #include <cstring>
 #include <vector>       
 #include <algorithm>    
-#include <numeric>      
+#include <numeric>    
+#include <limits>  
+#include <iomanip>
 
 #define M_PI 3.14159265358979323846
 
@@ -27,7 +29,7 @@ static constexpr float RMS_WINDOW_SIZE = 0.2f;  // 200 ms
 // Se pueden ajustar para mejorar la deteccion de contracciones musculares y la calibracion propuesta
 static constexpr float HOLD_TIME_SEC = 0.15f;   // 150 ms de hold time
 static constexpr float REST_CALIB_SEC = 2.0f;   // 2 segundos para calibrar 
-static constexpr float THRESHOLD_SCALE = 0.25f; // 25% del rango MVC-reposo
+static constexpr float THRESHOLD_SCALE = 0.20f; // 20% del rango MVC-reposo
 
 // ESTRUCTURAS DE FILTROS IIR DE SEGUNDO ORDEN (BIQUAD)
 struct Biquad{
@@ -300,4 +302,94 @@ bool loadSignalFromFile(const std::string& path, SignalData& data) {
 
     // Verifica que se hayan cargado datos correctamente
     return !data.time.empty();                          
+}
+
+// FUNCION PRINCIPAL
+int main(int argc, char* argv[]) {
+    // 1. Verificación de argumentos
+    if (argc < 2) {
+        // Instrucciones de uso para el usuario
+        std::cerr << "Uso: " << argv[0] << " <tuarchivo.txt>\n";
+        std::cerr << "Ejemplo: " << argv[0] << " emg_neuropathy.txt > resultados.csv\n";
+        return 1;
+    }
+
+    // 2. Carga de datos desde archivo
+    SignalData data;
+    if (!loadSignalFromFile(argv[1], data)) return 1;
+
+    // Numero de muestras cargadas
+    int N = (int)data.time.size();  
+    std::cerr << "[INFO] Muestras cargadas: " << N << "\n";
+
+    // 3. Calculo de FS dinamica
+    double diffSum = 0.0;                                       // Acumulador para la suma de las diferencias entre tiempos 
+    for (int i = 1; i < N; i++) 
+        diffSum += (data.time[i] - data.time[i-1]);             // Suma de las diferencias entre tiempos consecutivos
+    float estimatedFS = (float)(1.0 / (diffSum / (N - 1)));     // FS estimada basada en el promedio de las diferencias entre tiempos
+    std::cerr << "[INFO] Frecuencia de muestreo estimada: " << estimatedFS << " Hz\n";
+
+    // 4. Calculo de Offset DC (Promedio de la señal completa)
+    double signalSum = 0.0;                                     // Acumulador para la suma de las muestras de la senal
+    for (int i = 0; i < N; i++) signalSum += data.signal[i];    // Suma de todas las muestras de la senal para calcular el offset DC
+    float dcOffset = (float)(signalSum / N);                    // Offset DC estimado como el promedio de la senal completa
+    std::cerr << "[INFO] Offset DC estimado: " << dcOffset << " mV\n";
+
+    // 5. Inicializar Pipeline con la FS detectada
+    EMGPipeline pipeline;
+    pipeline.init(estimatedFS);
+
+    // 6. Procesamiento y salida CSV
+    // Encabezado para redirección a Excel/Python
+    std::cout << "time_s,raw_signal,filtered_signal,envelope,detection\n";
+
+    int totalContractions = 0;          // Contador para el numero total de contracciones detectadas
+    int prevDetection = 0;              // Variable para almacenar la deteccion anterior 
+    int calibratedSamplesCount = 0;     // Contador para el numero de muestras procesadas despues de la calibracion
+
+    std::cerr << "[INICIO] Procesando senal muestra a muestra...\n";
+
+    // Loop de procesamiento para cada muestra de la senal EMG
+    for (int i = 0; i < N; i++) {
+        float outFiltered = 0.0f;       // Variable para almacenar la salida del filtro bandpass
+        float outEnvelope = 0.0f;       // Variable para almacenar la salida de la envolvente RMS
+
+        // Simulacion del loop de tiempo real
+        int result = processSample(pipeline, data.signal[i], dcOffset, outFiltered, outEnvelope);
+
+        // Solo imprime resultados a partir de la calibracion para evitar datos no calibrados en el CSV
+        if (result >= 0) {
+            std::cout << std::fixed << std::setprecision(5) 
+                      << data.time[i] << "," 
+                      << data.signal[i] << ","
+                      << outFiltered << "," 
+                      << outEnvelope << "," 
+                      << result << "\n";
+
+            // Detector de flancos (edge detection) para contar contracciones
+            if (result == 1 && prevDetection == 0) {
+                totalContractions++;
+            }
+            prevDetection = result;
+            calibratedSamplesCount++;
+        }
+    }
+
+    // 7. Reporte final
+    std::cerr << "\n" << std::string(30, '=') << "\n";
+    std::cerr << "       REPORTE FINAL - HERMES\n";
+    std::cerr << std::string(30, '=') << "\n";
+    std::cerr << " Muestras procesadas:      " << calibratedSamplesCount << "\n";
+    std::cerr << " Nivel de reposo (base):   " << pipeline.restLevel << "\n";
+    std::cerr << " Umbral de activacion:     " << pipeline.threshold << "\n";
+    std::cerr << " Contracciones detectadas: " << totalContractions << "\n";
+    std::cerr << std::string(30, '=') << "\n";
+
+    // 8. Pausa de seguridad para Windows
+    std::cerr << "\nProceso terminado. Presiona ENTER para salir...";
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cin.get();
+
+    return 0;
 }
