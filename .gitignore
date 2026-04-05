@@ -1,10 +1,10 @@
-# IDE
+// IDE
 .vscode/
 
-# .exe
+// .exe
 HERMES.exe
 
-# data files
+// data files
 emg_neuropathy.txt
 emg_healthy.txt
 resultados.csv
