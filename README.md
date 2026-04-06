@@ -38,26 +38,26 @@ El motor de C++ implementa un pipeline de procesamiento digital de señales (DSP
 ---
 
 ## 📊 Resultados y Validación
-Se realizó una comparativa entre la señal cruda y el procesamiento final del motor HERMES. Como se observa en la siguiente gráfica, el sistema logra aislar la intención del usuario eliminando el ruido base y los artefactos de red eléctrica.
+Se realizó una comparativa entre la señal cruda y el procesamiento final del motor HERMES. Como se observa en las siguientes gráficas, el sistema logra aislar la intención del usuario eliminando el ruido base y los artefactos de red eléctrica. De mismo modo, se realizó una calibración de umbrales para la detección de activación muscular. 
+Las gráficas utilizadas son generadas a partir del archivo `emg_neuropathy.txt`.
 
 ### Observaciones clave:
 * **Análisis de Fourier:** Identificación de armónicos de la red eléctrica (60 Hz) y validación del ancho de banda de la señal EMG antes y después del filtrado.
 ![Análisis de Fourier](docs/Raw_signal.png)
-* **Filtrado:** Eliminación exitosa del offset DC, ruido de 60Hz y filtrado Bandpass (20-450 Hz).
+* **Filtrado, Rectificación y Envolvente:** Eliminación exitosa del offset DC, ruido de 60Hz y filtrado Bandpass (20-450 Hz). Rectificación y envolvente realizadas para identificar ventanas de actividad muscular.
 ![Filtrado y Envolvente](docs/Pipeline.png)
 * **Detección:** La lógica de *Hold Time* permite una señal de control (verde) estable, ideal para la emulación de teclas o comandos AAC, evitando activaciones intermitentes.
-![Detección y Calibracion](docs/Detecion.png)
-* **Comparativa (C++):** Filtrado y detección mediante procesamiento muestra a muestra en C++.
+![Detección y Calibracion](docs/Detection.png)
+* **Comparativa (C++):** Filtrado y detección mediante procesamiento muestra a muestra en C++. Futura implementación que se usará para la detección en tiempo real.
 ![Comparación](docs/emg_analysis.png)
 
 ## 🧩 Estructura del Proyecto
-- `Signal_processing.py` → Scripts de validación inicial y análisis de FFT con PhysioNet.
-- `HERMES.cpp` → Código optimizado para ejecución muestra a muestra (Motor HERMES).
-- `examples-of-electromyograms-1.0.0` → Señales de prueba (Neuropatía, Miopatía y Control).
-- `plot_results.py` → Graficación de de resultados obtenidos a través de HERMES.cpp
+* **`HERMES.cpp`**: Motor principal en C++ optimizado para procesamiento muestra a muestra (Motor HERMES).
+* **`plot_results.py`**: Script de Python para la graficación y validación visual de los archivos `.csv` generados por el motor de C++.
+* **`Validation_database/`**: Directorio que contiene la base de datos de PhysioNet y el script `Signal_processing.py` para la validación inicial de señales.
+* **`docs/`**: Carpeta de recursos que contiene las gráficas utilizados en esta documentación.
 
 ---
 
 ## 🎯 Objetivo e IN-NOVA BIO
 HERMES busca democratizar el acceso a tecnologías asistivas. Al utilizar hardware comercial (como el sensor Myoware y la ESP32) junto con este motor de procesamiento optimizado, logramos un sistema robusto, no invasivo y adaptable a las necesidades de cada usuario.
-
