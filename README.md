@@ -1,4 +1,4 @@
-# HERMES: High-Efficiency Real-time Muscle Extraction System
+# HERMES
 
 **HERMES** es un ecosistema de procesamiento de señales electromiográficas (EMG) desarrollado por **IN-NOVA BIO**. El proyecto está diseñado para convertir actividad muscular en comandos digitales, sirviendo como base para interfaces de comunicación asistida (AAC) accesibles y de baja latencia.
 
