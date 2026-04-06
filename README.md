@@ -60,4 +60,4 @@ Las gráficas utilizadas son generadas a partir del archivo `emg_neuropathy.txt`
 ---
 
 ## 🎯 Objetivo e IN-NOVA BIO
-HERMES busca democratizar el acceso a tecnologías asistivas. Al utilizar hardware comercial (como el sensor Myoware y la ESP32) junto con este motor de procesamiento optimizado, logramos un sistema robusto, no invasivo y adaptable a las necesidades de cada usuario.
+HERMES busca democratizar el acceso a tecnologías asistivas. Al utilizar hardware comercial junto con este motor de procesamiento optimizado, logramos un sistema robusto, no invasivo y adaptable a las necesidades de cada usuario.
